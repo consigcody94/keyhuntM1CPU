@@ -6,7 +6,7 @@ Keyhunt for macOS (M1/M2) – Apple Silicon Support
 
 🚀 Features
 
-✅ Optimized for macOS Monterey & Ventura (Apple M1 & M2)
+✅ Optimized for macOS  (Apple M1 & M2)
 ✅ Fixed Makefile for Apple Clang compiler
 ✅ Compatible with Bitcoin & Ethereum key searches
 ✅ Supports multiple key hunting modes:
