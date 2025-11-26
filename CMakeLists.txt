@@ -129,8 +129,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     endif()
 endif()
 
-# Link Time Optimization
-if(KEYHUNT_ENABLE_LTO)
+# Link Time Optimization (disabled when CUDA is enabled - nvlink conflicts with LTO)
+if(KEYHUNT_ENABLE_LTO AND NOT KEYHUNT_USE_CUDA)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT LTO_SUPPORTED OUTPUT LTO_ERROR)
     if(LTO_SUPPORTED)
@@ -139,6 +139,8 @@ if(KEYHUNT_ENABLE_LTO)
     else()
         message(WARNING "LTO not supported: ${LTO_ERROR}")
     endif()
+elseif(KEYHUNT_USE_CUDA)
+    message(STATUS "LTO disabled (CUDA enabled)")
 endif()
 
 # ============================================================================

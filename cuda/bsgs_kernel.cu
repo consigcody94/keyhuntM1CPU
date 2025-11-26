@@ -250,9 +250,9 @@ int cudaInit(int deviceId) {
 }
 
 // Get number of CUDA devices
-int cudaGetDeviceCount() {
+int keyhunt_cudaGetDeviceCount() {
     int count;
-    cudaError_t err = cudaGetDeviceCount(&count);
+    cudaError_t err = ::cudaGetDeviceCount(&count);
     if (err != cudaSuccess) return 0;
     return count;
 }
