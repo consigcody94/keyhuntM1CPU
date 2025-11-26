@@ -20,8 +20,9 @@ set -e
 # Discord webhook URL - REQUIRED! Get from Discord Server Settings > Integrations > Webhooks
 DISCORD_WEBHOOK=""
 
-# Target address for Puzzle #71
-TARGET_ADDRESS="1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU"
+# Target for Puzzle #71 - BSGS needs PUBLIC KEY, not address!
+# Address: 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU
+TARGET_PUBKEY="03a2efa402fd5268400c77c20e574ba86409ededee7c4020e4b9f0edbee53de0d4"
 
 # Bit range
 BIT_RANGE=71
@@ -66,7 +67,7 @@ send_discord() {
                 \"fields\": [
                     {\"name\": \"Machine\", \"value\": \"$hostname\", \"inline\": true},
                     {\"name\": \"GPU\", \"value\": \"$gpu_info\", \"inline\": true},
-                    {\"name\": \"Target\", \"value\": \"\`$TARGET_ADDRESS\`\", \"inline\": false}
+                    {\"name\": \"Target\", \"value\": \"\`$TARGET_PUBKEY\`\", \"inline\": false}
                 ],
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
             }]
@@ -176,8 +177,8 @@ build_keyhunt() {
 # ============================================================================
 
 create_target_file() {
-    echo "$TARGET_ADDRESS" > /root/puzzle71_target.txt
-    echo "[INFO] Target file created: /root/puzzle71_target.txt"
+    echo "$TARGET_PUBKEY" > /root/puzzle71_target.txt
+    echo "[INFO] Target file created with PUBLIC KEY: /root/puzzle71_target.txt"
 }
 
 # ============================================================================
@@ -201,7 +202,7 @@ run_keyhunt() {
 LOG_FILE="$1"
 RESULT_FILE="$2"
 DISCORD_WEBHOOK="$3"
-TARGET_ADDRESS="$4"
+TARGET_PUBKEY="$4"
 
 send_found_notification() {
     local private_key="$1"
@@ -214,7 +215,7 @@ send_found_notification() {
                 \"color\": 65280,
                 \"fields\": [
                     {\"name\": \"Private Key\", \"value\": \"\`$private_key\`\", \"inline\": false},
-                    {\"name\": \"Address\", \"value\": \"\`$TARGET_ADDRESS\`\", \"inline\": false},
+                    {\"name\": \"Address\", \"value\": \"1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU\", \"inline\": false},
                     {\"name\": \"⚠️ ACTION REQUIRED\", \"value\": \"IMMEDIATELY import this key and transfer the BTC!\", \"inline\": false}
                 ],
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
@@ -257,7 +258,7 @@ while true; do
             # Save to result file
             echo "FOUND AT: $(date)" > "$RESULT_FILE"
             echo "Private Key: $private_key" >> "$RESULT_FILE"
-            echo "Address: $TARGET_ADDRESS" >> "$RESULT_FILE"
+            echo "Address: 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU" >> "$RESULT_FILE"
 
             # Send Discord notification
             send_found_notification "$private_key"
@@ -308,7 +309,7 @@ MONITOR_EOF
     echo "$KEYHUNT_PID" > /root/keyhunt.pid
 
     # Start monitor in background
-    nohup /root/keyhunt_monitor.sh "$LOG_FILE" "$RESULT_FILE" "$DISCORD_WEBHOOK" "$TARGET_ADDRESS" >> /root/monitor.log 2>&1 &
+    nohup /root/keyhunt_monitor.sh "$LOG_FILE" "$RESULT_FILE" "$DISCORD_WEBHOOK" "$TARGET_PUBKEY" >> /root/monitor.log 2>&1 &
     MONITOR_PID=$!
     echo "[INFO] Monitor started with PID: $MONITOR_PID"
     echo "$MONITOR_PID" > /root/monitor.pid
