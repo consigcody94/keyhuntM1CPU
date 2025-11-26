@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "keyhunt",
+    "version": "0.3.0",
+    "description": "Bitcoin/Ethereum Private Key Hunter using secp256k1 elliptic curve",
+    "homepage": "https://github.com/consigcody94/keyhuntM1CPU",
+    "license": "MIT",
+    "supports": "!uwp",
+    "dependencies": [
+        "openssl",
+        "gmp"
+    ],
+    "features": {
+        "tests": {
+            "description": "Build tests",
+            "dependencies": []
+        }
+    }
+}
