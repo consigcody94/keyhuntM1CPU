@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # Keyhunt Vast.ai Deployment Script
-# Puzzle #71 Hunter with Discord Notifications
+# Puzzle #71 Hunter with Discord Notifications & Checkpointing
 # ============================================================================
 # This script:
 # 1. Sets up the environment
@@ -9,6 +9,8 @@
 # 3. Runs in background (survives SSH disconnect)
 # 4. Sends Discord notifications on start, progress, and FOUND
 # 5. Auto-stops when target is found
+# 6. SAVES PROGRESS on shutdown (graceful or crash)
+# 7. RESUMES from checkpoint on restart
 # ============================================================================
 
 set -e
@@ -33,9 +35,11 @@ CPU_THREADS=96
 # Stats interval in seconds
 STATS_INTERVAL=60
 
-# Log file location
+# File locations
 LOG_FILE="/root/keyhunt_puzzle71.log"
 RESULT_FILE="/root/keyhunt_FOUND.txt"
+CHECKPOINT_FILE="/root/keyhunt_checkpoint.txt"
+RANGES_SEARCHED_FILE="/root/keyhunt_ranges_searched.txt"
 
 # GitHub repo (private - you'll need to authenticate)
 REPO_URL="https://github.com/consigcody94/keyhuntM1CPU.git"
@@ -57,6 +61,7 @@ send_discord() {
     # Get machine info
     local gpu_info=$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown GPU")
     local hostname=$(hostname)
+    local searched_ranges=$(wc -l < "$RANGES_SEARCHED_FILE" 2>/dev/null || echo "0")
 
     curl -s -H "Content-Type: application/json" \
         -d "{
@@ -67,12 +72,78 @@ send_discord() {
                 \"fields\": [
                     {\"name\": \"Machine\", \"value\": \"$hostname\", \"inline\": true},
                     {\"name\": \"GPU\", \"value\": \"$gpu_info\", \"inline\": true},
-                    {\"name\": \"Target\", \"value\": \"\`$TARGET_PUBKEY\`\", \"inline\": false}
+                    {\"name\": \"Ranges Searched\", \"value\": \"$searched_ranges\", \"inline\": true},
+                    {\"name\": \"Target\", \"value\": \"\`${TARGET_PUBKEY:0:20}...\`\", \"inline\": false}
                 ],
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
             }]
         }" \
         "$DISCORD_WEBHOOK" || echo "[WARN] Discord notification failed"
+}
+
+# ============================================================================
+# CHECKPOINT FUNCTIONS
+# ============================================================================
+
+save_checkpoint() {
+    echo "[CHECKPOINT] Saving progress..."
+
+    # Get current position from log
+    local last_thread=$(tail -100 "$LOG_FILE" 2>/dev/null | grep -oE 'Thread 0x[0-9a-fA-F]+' | tail -1 || echo "")
+    local current_pos=$(echo "$last_thread" | grep -oE '0x[0-9a-fA-F]+' || echo "")
+
+    if [ -n "$current_pos" ]; then
+        echo "$current_pos" > "$CHECKPOINT_FILE"
+        echo "$(date -Iseconds) $current_pos" >> "$RANGES_SEARCHED_FILE"
+        echo "[CHECKPOINT] Saved position: $current_pos"
+
+        # Count progress
+        local total_searched=$(wc -l < "$RANGES_SEARCHED_FILE" 2>/dev/null || echo "0")
+        echo "[CHECKPOINT] Total ranges searched: $total_searched"
+    else
+        echo "[CHECKPOINT] No position found in log"
+    fi
+}
+
+load_checkpoint() {
+    if [ -f "$CHECKPOINT_FILE" ]; then
+        local saved_pos=$(cat "$CHECKPOINT_FILE")
+        echo "[CHECKPOINT] Found saved position: $saved_pos"
+        echo "$saved_pos"
+    else
+        echo ""
+    fi
+}
+
+# ============================================================================
+# GRACEFUL SHUTDOWN HANDLER
+# ============================================================================
+
+cleanup() {
+    echo ""
+    echo "[SHUTDOWN] Caught signal, saving progress..."
+
+    # Save checkpoint
+    save_checkpoint
+
+    # Kill keyhunt gracefully
+    if [ -f /root/keyhunt.pid ]; then
+        local pid=$(cat /root/keyhunt.pid)
+        kill -TERM $pid 2>/dev/null || true
+        sleep 2
+        kill -9 $pid 2>/dev/null || true
+    fi
+
+    # Kill monitor
+    if [ -f /root/monitor.pid ]; then
+        kill $(cat /root/monitor.pid) 2>/dev/null || true
+    fi
+
+    # Send Discord notification
+    send_discord "Hunt Paused" "Progress saved. Resume anytime with: ./vastai_deploy.sh run" 16776960
+
+    echo "[SHUTDOWN] Progress saved. You can resume later."
+    exit 0
 }
 
 # ============================================================================
@@ -192,10 +263,24 @@ run_keyhunt() {
 
     cd /root/keyhuntM1CPU
 
-    # Send start notification
-    send_discord "Hunt Started" "Keyhunt Puzzle #71 search beginning on vast.ai" 16776960
+    # Initialize ranges file if not exists
+    touch "$RANGES_SEARCHED_FILE"
 
-    # Create the monitoring script
+    # Check for checkpoint
+    local resume_pos=$(load_checkpoint)
+    local resume_flag=""
+
+    if [ -n "$resume_pos" ]; then
+        echo "[INFO] Resuming from checkpoint: $resume_pos"
+        # Use -r flag with starting range for resume
+        resume_flag="-r $resume_pos:$(printf '0x%x' $((0x800000000000000000)))"
+        send_discord "Hunt Resumed" "Resuming from checkpoint: $resume_pos" 3447003
+    else
+        echo "[INFO] Starting fresh search"
+        send_discord "Hunt Started" "Keyhunt Puzzle #71 search beginning on vast.ai" 16776960
+    fi
+
+    # Create the monitoring script with checkpoint saving
     cat > /root/keyhunt_monitor.sh << 'MONITOR_EOF'
 #!/bin/bash
 
@@ -203,6 +288,8 @@ LOG_FILE="$1"
 RESULT_FILE="$2"
 DISCORD_WEBHOOK="$3"
 TARGET_PUBKEY="$4"
+CHECKPOINT_FILE="/root/keyhunt_checkpoint.txt"
+RANGES_SEARCHED_FILE="/root/keyhunt_ranges_searched.txt"
 
 send_found_notification() {
     local private_key="$1"
@@ -227,6 +314,8 @@ send_found_notification() {
 send_progress_notification() {
     local speed="$1"
     local progress="$2"
+    local ranges_searched="$3"
+    local current_pos="$4"
     curl -s -H "Content-Type: application/json" \
         -d "{
             \"embeds\": [{
@@ -235,7 +324,8 @@ send_progress_notification() {
                 \"color\": 3447003,
                 \"fields\": [
                     {\"name\": \"Speed\", \"value\": \"$speed\", \"inline\": true},
-                    {\"name\": \"Progress\", \"value\": \"$progress\", \"inline\": true}
+                    {\"name\": \"Ranges Done\", \"value\": \"$ranges_searched\", \"inline\": true},
+                    {\"name\": \"Current Position\", \"value\": \"\`$current_pos\`\", \"inline\": false}
                 ],
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
             }]
@@ -243,16 +333,30 @@ send_progress_notification() {
         "$DISCORD_WEBHOOK"
 }
 
+save_checkpoint() {
+    local last_thread=$(tail -100 "$LOG_FILE" 2>/dev/null | grep -oE 'Thread 0x[0-9a-fA-F]+' | tail -1 || echo "")
+    local current_pos=$(echo "$last_thread" | grep -oE '0x[0-9a-fA-F]+' || echo "")
+
+    if [ -n "$current_pos" ]; then
+        echo "$current_pos" > "$CHECKPOINT_FILE"
+        echo "$(date -Iseconds) $current_pos" >> "$RANGES_SEARCHED_FILE"
+    fi
+}
+
 last_progress_time=0
-progress_interval=1800  # Send progress update every 30 minutes
+last_checkpoint_time=0
+progress_interval=1800      # Send progress update every 30 minutes
+checkpoint_interval=300     # Save checkpoint every 5 minutes
 
 while true; do
+    current_time=$(date +%s)
+
     # Check if keyhunt found the key
-    if grep -q "FOUND" "$LOG_FILE" 2>/dev/null; then
+    if grep -qE "(FOUND|Hit!)" "$LOG_FILE" 2>/dev/null; then
         echo "[MONITOR] KEY FOUND!"
 
         # Extract the private key
-        private_key=$(grep -A1 "FOUND" "$LOG_FILE" | grep -oE '[0-9a-fA-F]{64}' | head -1)
+        private_key=$(grep -E "(FOUND|Hit!|Private Key)" "$LOG_FILE" | grep -oE '[0-9a-fA-F]{64}' | head -1)
 
         if [ -n "$private_key" ]; then
             # Save to result file
@@ -271,16 +375,22 @@ while true; do
         fi
     fi
 
-    # Send periodic progress updates
-    current_time=$(date +%s)
+    # Save checkpoint every 5 minutes
+    if [ $((current_time - last_checkpoint_time)) -ge $checkpoint_interval ]; then
+        save_checkpoint
+        last_checkpoint_time=$current_time
+    fi
+
+    # Send periodic progress updates every 30 minutes
     if [ $((current_time - last_progress_time)) -ge $progress_interval ]; then
         if [ -f "$LOG_FILE" ]; then
             # Get latest speed from log
-            speed=$(tail -20 "$LOG_FILE" | grep -oE '[0-9]+\.?[0-9]* [GMK]Key/s' | tail -1 || echo "calculating...")
-            progress=$(tail -5 "$LOG_FILE" | grep -oE '[0-9]+\.?[0-9]*%' | tail -1 || echo "running...")
+            speed=$(tail -20 "$LOG_FILE" | grep -oE '[0-9]+\.?[0-9]* [PTGMK]?[Kk]eys/s' | tail -1 || echo "calculating...")
+            ranges_searched=$(wc -l < "$RANGES_SEARCHED_FILE" 2>/dev/null || echo "0")
+            current_pos=$(cat "$CHECKPOINT_FILE" 2>/dev/null || echo "unknown")
 
             if [ -n "$DISCORD_WEBHOOK" ]; then
-                send_progress_notification "$speed" "$progress"
+                send_progress_notification "$speed" "running" "$ranges_searched" "$current_pos"
             fi
         fi
         last_progress_time=$current_time
@@ -292,17 +402,17 @@ MONITOR_EOF
 
     chmod +x /root/keyhunt_monitor.sh
 
+    # Set up signal handlers for graceful shutdown
+    trap cleanup SIGTERM SIGINT SIGHUP
+
     # Start keyhunt in background with logging
     echo "[INFO] Starting keyhunt..."
-    echo "Command: ./build/keyhunt -m bsgs -f /root/puzzle71_target.txt -b $BIT_RANGE -t $CPU_THREADS -R -s $STATS_INTERVAL"
 
-    nohup ./build/keyhunt -m bsgs \
-        -f /root/puzzle71_target.txt \
-        -b $BIT_RANGE \
-        -t $CPU_THREADS \
-        -R \
-        -s $STATS_INTERVAL \
-        >> "$LOG_FILE" 2>&1 &
+    # Build command - use random mode for better coverage
+    local cmd="./build/keyhunt -m bsgs -f /root/puzzle71_target.txt -b $BIT_RANGE -t $CPU_THREADS -R -s $STATS_INTERVAL"
+    echo "Command: $cmd"
+
+    nohup $cmd >> "$LOG_FILE" 2>&1 &
 
     KEYHUNT_PID=$!
     echo "[INFO] Keyhunt started with PID: $KEYHUNT_PID"
@@ -319,19 +429,25 @@ MONITOR_EOF
     echo "✅ KEYHUNT IS RUNNING IN BACKGROUND"
     echo "============================================"
     echo ""
+    echo "CHECKPOINT ENABLED - Progress saves every 5 minutes!"
+    echo ""
     echo "You can now safely disconnect from SSH!"
     echo ""
-    echo "Useful commands:"
-    echo "  tail -f $LOG_FILE          # Watch live output"
-    echo "  cat /root/keyhunt.pid       # Get keyhunt PID"
-    echo "  kill \$(cat /root/keyhunt.pid) # Stop keyhunt"
-    echo "  nvidia-smi                  # Check GPU usage"
+    echo "Commands:"
+    echo "  tail -f $LOG_FILE           # Watch live output"
+    echo "  ./vastai_deploy.sh status   # Check status"
+    echo "  ./vastai_deploy.sh stop     # Graceful stop (saves progress)"
+    echo "  ./vastai_deploy.sh resume   # Resume from checkpoint"
     echo ""
-    echo "Discord notifications will be sent for:"
+    echo "Progress files:"
+    echo "  $CHECKPOINT_FILE      # Current position"
+    echo "  $RANGES_SEARCHED_FILE # All searched ranges"
+    echo ""
+    echo "Discord notifications:"
     echo "  - Progress updates (every 30 min)"
     echo "  - KEY FOUND (immediately)"
     echo ""
-    echo "If key is found, it will be saved to: $RESULT_FILE"
+    echo "If key is found: $RESULT_FILE"
     echo "============================================"
 }
 
@@ -355,6 +471,18 @@ status() {
         echo "[✗] Keyhunt is NOT running (no PID file)"
     fi
 
+    echo ""
+    echo "Checkpoint Status:"
+    if [ -f "$CHECKPOINT_FILE" ]; then
+        echo "  Last position: $(cat $CHECKPOINT_FILE)"
+    else
+        echo "  No checkpoint saved"
+    fi
+
+    if [ -f "$RANGES_SEARCHED_FILE" ]; then
+        echo "  Ranges searched: $(wc -l < $RANGES_SEARCHED_FILE)"
+    fi
+
     if [ -f "$LOG_FILE" ]; then
         echo ""
         echo "Last 10 lines of log:"
@@ -368,18 +496,30 @@ status() {
     fi
 
     echo ""
-    nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv
+    nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv 2>/dev/null || echo "nvidia-smi not available"
 }
 
 # ============================================================================
-# STOP FUNCTION
+# STOP FUNCTION (GRACEFUL)
 # ============================================================================
 
 stop() {
-    echo "Stopping keyhunt..."
+    echo "Stopping keyhunt gracefully..."
+
+    # Save checkpoint first
+    save_checkpoint
 
     if [ -f /root/keyhunt.pid ]; then
-        kill $(cat /root/keyhunt.pid) 2>/dev/null || true
+        local pid=$(cat /root/keyhunt.pid)
+        echo "Sending SIGTERM to PID $pid..."
+        kill -TERM $pid 2>/dev/null || true
+        sleep 2
+
+        # Force kill if still running
+        if ps -p $pid > /dev/null 2>&1; then
+            echo "Force killing..."
+            kill -9 $pid 2>/dev/null || true
+        fi
         rm /root/keyhunt.pid
     fi
 
@@ -389,9 +529,54 @@ stop() {
     fi
 
     pkill -f "keyhunt.*bsgs" 2>/dev/null || true
+    pkill -f "keyhunt_monitor" 2>/dev/null || true
 
-    echo "Keyhunt stopped"
-    send_discord "Hunt Stopped" "Keyhunt was manually stopped" 16711680
+    echo ""
+    echo "✅ Keyhunt stopped. Progress saved."
+    echo ""
+    echo "To resume later: ./vastai_deploy.sh run"
+
+    if [ -f "$CHECKPOINT_FILE" ]; then
+        echo "Resume position: $(cat $CHECKPOINT_FILE)"
+    fi
+
+    send_discord "Hunt Paused" "Keyhunt stopped gracefully. Progress saved." 16776960
+}
+
+# ============================================================================
+# DOWNLOAD PROGRESS (for transferring to another machine)
+# ============================================================================
+
+download_progress() {
+    local backup_file="/root/keyhunt_progress_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+
+    echo "Creating progress backup..."
+    tar -czf "$backup_file" \
+        "$CHECKPOINT_FILE" \
+        "$RANGES_SEARCHED_FILE" \
+        "$LOG_FILE" \
+        2>/dev/null || true
+
+    echo "Backup created: $backup_file"
+    echo ""
+    echo "Download with:"
+    echo "  scp -P <port> root@<ip>:$backup_file ."
+}
+
+# ============================================================================
+# RESET (clear all progress)
+# ============================================================================
+
+reset_progress() {
+    echo "⚠️  WARNING: This will delete all progress!"
+    read -p "Are you sure? (type 'yes' to confirm): " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        rm -f "$CHECKPOINT_FILE" "$RANGES_SEARCHED_FILE" "$LOG_FILE"
+        echo "Progress reset. Starting fresh on next run."
+    else
+        echo "Cancelled."
+    fi
 }
 
 # ============================================================================
@@ -410,7 +595,7 @@ case "${1:-run}" in
         setup_environment
         build_keyhunt
         ;;
-    run)
+    run|resume)
         if [ -z "$DISCORD_WEBHOOK" ]; then
             echo "============================================"
             echo "⚠️  WARNING: Discord webhook not configured!"
@@ -440,13 +625,22 @@ case "${1:-run}" in
     stop)
         stop
         ;;
+    backup)
+        download_progress
+        ;;
+    reset)
+        reset_progress
+        ;;
     *)
-        echo "Usage: $0 {setup|build|run|status|stop}"
+        echo "Usage: $0 {setup|build|run|resume|status|stop|backup|reset}"
         echo ""
-        echo "  setup  - Full setup: install deps, clone, build"
-        echo "  build  - Just rebuild keyhunt"
-        echo "  run    - Start keyhunt (runs setup if needed)"
-        echo "  status - Check if keyhunt is running"
-        echo "  stop   - Stop keyhunt"
+        echo "  setup   - Full setup: install deps, clone, build"
+        echo "  build   - Just rebuild keyhunt"
+        echo "  run     - Start keyhunt (resumes from checkpoint if exists)"
+        echo "  resume  - Same as run (resumes from checkpoint)"
+        echo "  status  - Check if keyhunt is running + progress"
+        echo "  stop    - Graceful stop (saves progress)"
+        echo "  backup  - Create downloadable backup of progress"
+        echo "  reset   - Clear all progress (start fresh)"
         ;;
 esac
