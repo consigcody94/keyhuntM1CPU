@@ -1,6 +1,6 @@
-#include <cstring>
-#include <cstdio>
-#include <cstdlib>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "util.h"
 
