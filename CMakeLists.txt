@@ -324,13 +324,14 @@ if(KEYHUNT_CUDA_FOUND)
     )
 
     # CUDA-specific compile options for maximum performance
+    set_target_properties(keyhunt_cuda PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+    )
     target_compile_options(keyhunt_cuda PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:
-            --use_fast_math
-            -O3
-            --ptxas-options=-v
-            -Xcompiler=-fPIC
-        >
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3>
+        $<$<COMPILE_LANGUAGE:CUDA>:--ptxas-options=-v>
     )
 
     target_link_libraries(keyhunt_cuda PUBLIC
