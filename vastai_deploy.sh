@@ -22,9 +22,9 @@ set -e
 # Discord webhook URL - REQUIRED! Get from Discord Server Settings > Integrations > Webhooks
 DISCORD_WEBHOOK="https://discordapp.com/api/webhooks/1443124373639925770/HG9BSVbH02AAUo7JDNzCxcXKLN62zCTJ4fejBpkL6Fd_1EGdXQjloHmBsKFhKA0AwL5F"
 
-# Target for Puzzle #71 - BSGS needs PUBLIC KEY, not address!
-# Address: 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU
-TARGET_PUBKEY="03a2efa402fd5268400c77c20e574ba86409ededee7c4020e4b9f0edbee53de0d4"
+# Target for Puzzle #71 - NO public key available, must search by ADDRESS
+# Using -m address mode (slower than BSGS but works without public key)
+TARGET_ADDRESS="1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU"
 
 # Bit range
 BIT_RANGE=71
@@ -73,7 +73,7 @@ send_discord() {
                     {\"name\": \"Machine\", \"value\": \"$hostname\", \"inline\": true},
                     {\"name\": \"GPU\", \"value\": \"$gpu_info\", \"inline\": true},
                     {\"name\": \"Ranges Searched\", \"value\": \"$searched_ranges\", \"inline\": true},
-                    {\"name\": \"Target\", \"value\": \"\`${TARGET_PUBKEY:0:20}...\`\", \"inline\": false}
+                    {\"name\": \"Target\", \"value\": \"\`$TARGET_ADDRESS\`\", \"inline\": false}
                 ],
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
             }]
@@ -248,8 +248,8 @@ build_keyhunt() {
 # ============================================================================
 
 create_target_file() {
-    echo "$TARGET_PUBKEY" > /root/puzzle71_target.txt
-    echo "[INFO] Target file created with PUBLIC KEY: /root/puzzle71_target.txt"
+    echo "$TARGET_ADDRESS" > /root/puzzle71_target.txt
+    echo "[INFO] Target file created with ADDRESS: /root/puzzle71_target.txt"
 }
 
 # ============================================================================
@@ -287,7 +287,7 @@ run_keyhunt() {
 LOG_FILE="$1"
 RESULT_FILE="$2"
 DISCORD_WEBHOOK="$3"
-TARGET_PUBKEY="$4"
+TARGET_ADDRESS="$4"
 CHECKPOINT_FILE="/root/keyhunt_checkpoint.txt"
 RANGES_SEARCHED_FILE="/root/keyhunt_ranges_searched.txt"
 
@@ -352,11 +352,12 @@ while true; do
     current_time=$(date +%s)
 
     # Check if keyhunt found the key
-    if grep -qE "(FOUND|Hit!)" "$LOG_FILE" 2>/dev/null; then
+    # Address mode outputs: "Hit! Private Key: d2c55"
+    if grep -q "Hit! Private Key:" "$LOG_FILE" 2>/dev/null; then
         echo "[MONITOR] KEY FOUND!"
 
-        # Extract the private key
-        private_key=$(grep -E "(FOUND|Hit!|Private Key)" "$LOG_FILE" | grep -oE '[0-9a-fA-F]{64}' | head -1)
+        # Extract the private key (format: "Hit! Private Key: HEXVALUE")
+        private_key=$(grep "Hit! Private Key:" "$LOG_FILE" | grep -oE 'Private Key: [0-9a-fA-F]+' | tail -1 | cut -d' ' -f3)
 
         if [ -n "$private_key" ]; then
             # Save to result file
@@ -408,8 +409,12 @@ MONITOR_EOF
     # Start keyhunt in background with logging
     echo "[INFO] Starting keyhunt..."
 
-    # Build command - use random mode for better coverage
-    local cmd="./build/keyhunt -m bsgs -f /root/puzzle71_target.txt -b $BIT_RANGE -t $CPU_THREADS -R -s $STATS_INTERVAL"
+    # Build command - use ADDRESS mode (no public key available for puzzle 71)
+    # -m address: search by bitcoin address
+    # -l compress: look for compressed addresses
+    # -R: random mode for better coverage
+    # -c btc: bitcoin
+    local cmd="./build/keyhunt -m address -f /root/puzzle71_target.txt -b $BIT_RANGE -l compress -c btc -R -t $CPU_THREADS -s $STATS_INTERVAL"
     echo "Command: $cmd"
 
     nohup $cmd >> "$LOG_FILE" 2>&1 &
@@ -419,7 +424,7 @@ MONITOR_EOF
     echo "$KEYHUNT_PID" > /root/keyhunt.pid
 
     # Start monitor in background
-    nohup /root/keyhunt_monitor.sh "$LOG_FILE" "$RESULT_FILE" "$DISCORD_WEBHOOK" "$TARGET_PUBKEY" >> /root/monitor.log 2>&1 &
+    nohup /root/keyhunt_monitor.sh "$LOG_FILE" "$RESULT_FILE" "$DISCORD_WEBHOOK" "$TARGET_ADDRESS" >> /root/monitor.log 2>&1 &
     MONITOR_PID=$!
     echo "[INFO] Monitor started with PID: $MONITOR_PID"
     echo "$MONITOR_PID" > /root/monitor.pid
