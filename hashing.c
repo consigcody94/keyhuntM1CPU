@@ -3,6 +3,7 @@
 #include <openssl/ripemd.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "hashing.h"
 #include "sha3/sha3.h"
 

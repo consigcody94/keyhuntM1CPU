@@ -210,11 +210,18 @@ set(BLOOM_SOURCES
 # Hash functions
 set(HASH_SOURCES
     hash/sha256.cpp
-    hash/sha256_sse.cpp
     hash/sha512.cpp
     hash/ripemd160.cpp
-    hash/ripemd160_sse.cpp
 )
+
+# SSE optimized hash functions (x86_64 only)
+if(KEYHUNT_ARCH_X64)
+    list(APPEND HASH_SOURCES
+        hash/sha256_sse.cpp
+        hash/ripemd160_sse.cpp
+    )
+    message(STATUS "Including SSE-optimized hash functions")
+endif()
 
 # GMP256K1 (GMP-based secp256k1)
 set(GMP256K1_SOURCES
