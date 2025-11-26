@@ -107,8 +107,8 @@ save_checkpoint() {
 
 load_checkpoint() {
     if [ -f "$CHECKPOINT_FILE" ]; then
-        local saved_pos=$(cat "$CHECKPOINT_FILE")
-        echo "[CHECKPOINT] Found saved position: $saved_pos"
+        local saved_pos=$(cat "$CHECKPOINT_FILE" | tr -d '\n\r')
+        echo "[CHECKPOINT] Found saved position: $saved_pos" >&2
         echo "$saved_pos"
     else
         echo ""
