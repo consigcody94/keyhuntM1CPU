@@ -52,6 +52,53 @@ jobs:
         name: bsgsd-linux-cpu
         path: build/bsgsd
 
+  build-linux-cuda:
+    name: Linux CUDA (GPU)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install CUDA Toolkit
+      uses: Jimver/cuda-toolkit@v0.2.16
+      with:
+        cuda: '12.4.0'
+        method: 'network'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev libgmp-dev libomp-dev
+
+    - name: Configure CMake with CUDA
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DKEYHUNT_USE_CUDA=ON \
+          -DKEYHUNT_APPLE_SILICON_ONLY=OFF \
+          -DCMAKE_CUDA_ARCHITECTURES="75;80;86;89;90"
+
+    - name: Build
+      run: cmake --build build --config Release -j $(nproc)
+
+    - name: Test binary
+      run: |
+        ./build/keyhunt -h || true
+        file ./build/keyhunt
+        ldd ./build/keyhunt || true
+
+    - name: Upload keyhunt (CUDA)
+      uses: actions/upload-artifact@v4
+      with:
+        name: keyhunt-linux-cuda
+        path: build/keyhunt
+
+    - name: Upload bsgsd (CUDA)
+      uses: actions/upload-artifact@v4
+      with:
+        name: bsgsd-linux-cuda
+        path: build/bsgsd
+
   release:
     needs: [build-linux-cpu]
     runs-on: ubuntu-latest
