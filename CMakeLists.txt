@@ -90,31 +90,37 @@ if(APPLE AND NOT KEYHUNT_ARCH_ARM64 AND KEYHUNT_APPLE_SILICON_ONLY)
 endif()
 
 # Set optimization flags - AGGRESSIVE for Apple Silicon
+# Note: Use generator expressions to exclude CUDA since nvcc doesn't understand gcc flags
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-        # Aggressive optimizations for puzzle hunting
-        add_compile_options(-Ofast -ftree-vectorize -ffast-math -funroll-loops)
+        # Aggressive optimizations for puzzle hunting (C/C++ only, not CUDA)
+        add_compile_options(
+            $<$<COMPILE_LANGUAGE:C,CXX>:-Ofast>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-ftree-vectorize>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-ffast-math>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-funroll-loops>
+        )
 
         # Apple Silicon specific optimizations
         if(APPLE AND KEYHUNT_ARCH_ARM64)
             message(STATUS "Enabling Apple Silicon optimizations")
             add_compile_options(
-                -mcpu=apple-m1        # Optimize for M1+ architecture
-                -mtune=native         # Tune for the specific chip
-                -fvectorize           # Enable auto-vectorization
-                -fslp-vectorize       # Enable SLP vectorization
+                $<$<COMPILE_LANGUAGE:C,CXX>:-mcpu=apple-m1>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-mtune=native>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-fvectorize>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-fslp-vectorize>
             )
             # Use Apple's Accelerate framework for math operations
             add_compile_definitions(ACCELERATE_NEW_LAPACK)
         elseif(KEYHUNT_ARCH_ARM64)
             check_cxx_compiler_flag("-mcpu=native" COMPILER_SUPPORTS_MCPU_NATIVE)
             if(COMPILER_SUPPORTS_MCPU_NATIVE)
-                add_compile_options(-mcpu=native)
+                add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-mcpu=native>)
             endif()
         elseif(KEYHUNT_ARCH_X64)
             check_cxx_compiler_flag("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
             if(COMPILER_SUPPORTS_MARCH_NATIVE)
-                add_compile_options(-march=native)
+                add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-march=native>)
             endif()
         endif()
     elseif(MSVC)
