@@ -20,7 +20,7 @@ set -e
 # ============================================================================
 
 # Discord webhook URL - REQUIRED! Get from Discord Server Settings > Integrations > Webhooks
-DISCORD_WEBHOOK=""
+DISCORD_WEBHOOK="https://discordapp.com/api/webhooks/1443124373639925770/HG9BSVbH02AAUo7JDNzCxcXKLN62zCTJ4fejBpkL6Fd_1EGdXQjloHmBsKFhKA0AwL5F"
 
 # Target for Puzzle #71 - BSGS needs PUBLIC KEY, not address!
 # Address: 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU
@@ -345,7 +345,7 @@ save_checkpoint() {
 
 last_progress_time=0
 last_checkpoint_time=0
-progress_interval=1800      # Send progress update every 30 minutes
+progress_interval=600       # Send progress update every 10 minutes
 checkpoint_interval=300     # Save checkpoint every 5 minutes
 
 while true; do
