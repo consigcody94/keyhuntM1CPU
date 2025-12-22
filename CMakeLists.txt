@@ -453,6 +453,95 @@ install(DIRECTORY tests/
 )
 
 # ============================================================================
+# Unit Tests (New Modern Framework)
+# ============================================================================
+if(KEYHUNT_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(keyhunt_tests
+        tests/test_main.cpp
+    )
+
+    target_include_directories(keyhunt_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+    target_link_libraries(keyhunt_tests PRIVATE
+        Threads::Threads
+    )
+
+    target_compile_features(keyhunt_tests PRIVATE cxx_std_17)
+
+    add_test(NAME unit_tests COMMAND keyhunt_tests)
+
+    message(STATUS "Unit tests:     Enabled")
+endif()
+
+# ============================================================================
+# Benchmarks
+# ============================================================================
+option(KEYHUNT_BUILD_BENCHMARKS "Build benchmark suite" OFF)
+
+if(KEYHUNT_BUILD_BENCHMARKS)
+    add_executable(keyhunt_benchmark
+        benchmarks/benchmark_main.cpp
+    )
+
+    target_include_directories(keyhunt_benchmark PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+    target_link_libraries(keyhunt_benchmark PRIVATE
+        Threads::Threads
+    )
+
+    target_compile_features(keyhunt_benchmark PRIVATE cxx_std_17)
+
+    # Maximum optimizations for benchmarks
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(keyhunt_benchmark PRIVATE -O3 -march=native)
+    endif()
+
+    message(STATUS "Benchmarks:     Enabled")
+endif()
+
+# ============================================================================
+# Doxygen Documentation
+# ============================================================================
+option(KEYHUNT_BUILD_DOCS "Build Doxygen documentation" OFF)
+
+if(KEYHUNT_BUILD_DOCS)
+    find_package(Doxygen)
+    if(DOXYGEN_FOUND)
+        set(DOXYGEN_PROJECT_NAME "Keyhunt")
+        set(DOXYGEN_PROJECT_BRIEF "High-Performance Bitcoin Puzzle Hunter")
+        set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/docs)
+        set(DOXYGEN_GENERATE_HTML YES)
+        set(DOXYGEN_GENERATE_MAN NO)
+        set(DOXYGEN_EXTRACT_ALL YES)
+        set(DOXYGEN_EXTRACT_PRIVATE YES)
+        set(DOXYGEN_EXTRACT_STATIC YES)
+        set(DOXYGEN_SOURCE_BROWSER YES)
+        set(DOXYGEN_INLINE_SOURCES YES)
+        set(DOXYGEN_REFERENCED_BY_RELATION YES)
+        set(DOXYGEN_REFERENCES_RELATION YES)
+        set(DOXYGEN_GENERATE_TREEVIEW YES)
+        set(DOXYGEN_USE_MDFILE_AS_MAINPAGE ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
+
+        doxygen_add_docs(docs
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/README.md
+            COMMENT "Generating API documentation with Doxygen"
+        )
+        message(STATUS "Documentation:  Enabled (run 'make docs')")
+    else()
+        message(WARNING "Doxygen not found, documentation disabled")
+    endif()
+endif()
+
+# ============================================================================
 # Summary
 # ============================================================================
 message(STATUS "")

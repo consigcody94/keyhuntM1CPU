@@ -1,0 +1,21 @@
+FROM arm64v8/ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libssl-dev \
+    libgmp-dev \
+    libomp-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+RUN cmake -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DKEYHUNT_USE_CUDA=OFF \
+    -DKEYHUNT_APPLE_SILICON_ONLY=OFF \
+    && cmake --build build -j$(nproc)
+
+CMD ["./build/keyhunt", "-h"]
