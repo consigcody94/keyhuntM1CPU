@@ -29,8 +29,10 @@ email: albertobsd@gmail.com
 
 #include <unistd.h>
 #include <pthread.h>
+#if defined(__linux__)
 #include <sys/random.h>
 #include <linux/random.h>
+#endif
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -327,7 +329,12 @@ int main(int argc, char **argv)	{
 	BSGS_GROUP_SIZE.SetInt32(CPU_GRP_SIZE);
 	
 	unsigned long rseedvalue;
+#ifdef __APPLE__
+	arc4random_buf(&rseedvalue, sizeof(unsigned long));
+	int bytes_read = sizeof(unsigned long);
+#else
 	int bytes_read = getrandom(&rseedvalue, sizeof(unsigned long), GRND_NONBLOCK);
+#endif
 	if(bytes_read > 0)	{
 		rseed(rseedvalue);
 		/*
@@ -1316,10 +1323,16 @@ int main(int argc, char **argv)	{
 
     // Setting socket options
     int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt failed");
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        perror("setsockopt SO_REUSEADDR failed");
         exit(EXIT_FAILURE);
     }
+#ifdef SO_REUSEPORT
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt))) {
+        perror("setsockopt SO_REUSEPORT failed");
+        exit(EXIT_FAILURE);
+    }
+#endif
 
     // Setting address parameters
     address.sin_family = AF_INET;

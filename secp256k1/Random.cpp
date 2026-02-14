@@ -123,6 +123,13 @@ void rseed(unsigned long seed) {
 unsigned long rndl() {
 	return rk_random(&localState);
 }
+#elif defined(__APPLE__)
+#include <stdlib.h>
+unsigned long rndl() {
+	unsigned long r;
+	arc4random_buf(&r, sizeof(r));
+	return r;
+}
 #else
 unsigned long rndl() {
 	unsigned long r;

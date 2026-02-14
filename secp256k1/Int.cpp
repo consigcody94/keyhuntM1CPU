@@ -21,7 +21,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
+#if !defined(__aarch64__) && !defined(_M_ARM64) && !defined(__APPLE__)
 #include <emmintrin.h>
+#endif
 
 #define MAX(x,y) (((x)>(y))?(x):(y))
 #define MIN(x,y) (((x)<(y))?(x):(y))

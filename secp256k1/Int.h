@@ -212,6 +212,12 @@ static inline unsigned char _addcarry_u64(unsigned char c_in, uint64_t a, uint64
   return (unsigned char)(res >> 64);
 }
 
+static inline unsigned char _subborrow_u64(unsigned char c_in, uint64_t a, uint64_t b, unsigned long long *out) {
+  unsigned __int128 res = (unsigned __int128)a - b - c_in;
+  *out = (uint64_t)res;
+  return (unsigned char)(res >> 127);
+}
+
 static inline uint64_t __shiftright128(uint64_t LowPart, uint64_t HighPart, unsigned char Shift) {
   unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
   return (uint64_t)(val >> Shift);
@@ -221,6 +227,8 @@ static inline uint64_t __shiftleft128(uint64_t LowPart, uint64_t HighPart, unsig
   unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
   return (uint64_t)(val >> (64 - Shift));
 }
+
+#define _byteswap_uint64 __builtin_bswap64
 
 #elif !defined(_WIN64)
 

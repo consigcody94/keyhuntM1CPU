@@ -1,13 +1,13 @@
 CC = clang
 CXX = clang++
-CFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto
-CXXFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto
+CFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.2-a+crypto -fomit-frame-pointer -D__APPLE__
+CXXFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.2-a+crypto -fomit-frame-pointer -D__APPLE__
 LDFLAGS = -lm -lpthread -lcrypto -lgmp
 RM = rm -f
 
 # Specify the include path for OpenSSL
-OPENSSL_INCLUDE = -I/opt/homebrew/Cellar/openssl@3/3.1.4/include
-OPENSSL_LIB = -L/opt/homebrew/Cellar/openssl@3/3.1.4/lib -lssl -lcrypto
+OPENSSL_INCLUDE = -I/opt/homebrew/opt/openssl@3/include
+OPENSSL_LIB = -L/opt/homebrew/opt/openssl@3/lib -lssl -lcrypto
 
 # Specify the include and library paths for GMP
 GMP_INCLUDE := -I/opt/homebrew/include
@@ -58,7 +58,5 @@ bsgsd: ; \
     $(CXX) $(CXXFLAGS) -c secp256k1/IntGroup.cpp -o IntGroup.o $(SEPARATOR) \
     $(CXX) $(CXXFLAGS) -o hash/ripemd160.o -c hash/ripemd160.cpp $(SEPARATOR) \
     $(CXX) $(CXXFLAGS) -o hash/sha256.o -c hash/sha256.cpp $(SEPARATOR) \
-    $(CXX) $(CXXFLAGS) -o hash/ripemd160_sse.o -c hash/ripemd160_sse.cpp $(SEPARATOR) \
-    $(CXX) $(CXXFLAGS) -o hash/sha256_sse.o -c hash/sha256_sse.cpp $(SEPARATOR) \
-    $(CXX) $(CXXFLAGS) -o bsgsd bsgsd.cpp base58.o rmd160.o hash/ripemd160.o hash/ripemd160_sse.o hash/sha256.o hash/sha256_sse.o bloom.o oldbloom.o xxhash.o util.o Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o sha3.o keccak.o $(LDFLAGS) $(SEPARATOR) \
+    $(CXX) $(CXXFLAGS) -o bsgsd bsgsd.cpp base58.o rmd160.o hash/ripemd160.o hash/sha256.o bloom.o oldbloom.o xxhash.o util.o Int.o Point.o SECP256K1.o IntMod.o Random.o IntGroup.o sha3.o keccak.o $(LDFLAGS) $(SEPARATOR) \
     $(RM) *.o    
