@@ -36,6 +36,9 @@ email: albertobsd@gmail.com
 #include <netinet/in.h>
 #include <arpa/inet.h> // for inet_addr()
 #include <pthread.h>   // for pthread functions
+#ifdef __APPLE__
+#include <sys/qos.h>
+#endif
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -1573,6 +1576,9 @@ int bsgs_searchbinary(struct bsgs_xvalue *buffer,char *data,int64_t array_length
 }
 
 void *thread_process_bsgs(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 
 	FILE *filekey;
 	char xpoint_raw[32],*aux_c,*hextemp;
@@ -1765,7 +1771,12 @@ pn.y.ModAdd(&GSn[i].y);
 				
 				for(int i = 0; i<CPU_GRP_SIZE && bsgs_found == 0; i++) {
 					
-					pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
+					#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
+						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 					
 					r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 					
@@ -1961,6 +1972,9 @@ void sleep_ms(int milliseconds)	{ // cross-platform sleep function
 
 
 void *thread_bPload(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 
 	char rawvalue[32];
 	struct bPload *tt;
@@ -2120,6 +2134,9 @@ void *thread_bPload(void *vargp)	{
 }
 
 void *thread_bPload_2blooms(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 	char rawvalue[32];
 	struct bPload *tt;
 	uint64_t i_counter,j,nbStep;
@@ -2342,6 +2359,9 @@ void init_generator()	{
 }
 
 void* client_handler(void* arg) {
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
     int client_fd = *(int*)arg;
     char buffer[1024];
 	char *hextemp;

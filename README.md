@@ -58,6 +58,7 @@ The secp256k1 curve uses 256-bit integers. We break them into **8 × 32-bit limb
 | 🧵 **Multi-threaded** | Scales across all CPU cores |
 | 🎮 **CUDA Support** | Offload to NVIDIA GPUs (NEW!) |
 | 💾 **Checkpointing** | Save/resume long searches |
+| 🍎 **Apple Silicon** | **New:** 4x64-bit math, QoS pinning, Prefetching & NEON crypto! |
 
 ---
 

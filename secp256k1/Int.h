@@ -195,9 +195,36 @@ private:
 
 // Inline routines
 
-#ifndef _WIN64
+#if defined(__aarch64__) || defined(_M_ARM64)
 
-// Missing intrinsics
+// ARM64 implementation using __int128 for M1/M2/M3/M4 chips
+// This maps directly to 64-bit ALUs and hardware carry flags
+
+static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t *h) {
+  unsigned __int128 res = (unsigned __int128)a * b;
+  *h = (uint64_t)(res >> 64);
+  return (uint64_t)res;
+}
+
+static inline unsigned char _addcarry_u64(unsigned char c_in, uint64_t a, uint64_t b, unsigned long long *out) {
+  unsigned __int128 res = (unsigned __int128)a + b + c_in;
+  *out = (uint64_t)res;
+  return (unsigned char)(res >> 64);
+}
+
+static inline uint64_t __shiftright128(uint64_t LowPart, uint64_t HighPart, unsigned char Shift) {
+  unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
+  return (uint64_t)(val >> Shift);
+}
+
+static inline uint64_t __shiftleft128(uint64_t LowPart, uint64_t HighPart, unsigned char Shift) {
+  unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
+  return (uint64_t)(val >> (64 - Shift));
+}
+
+#elif !defined(_WIN64)
+
+// Missing intrinsics (x86_64 GCC/Clang inline assembly)
 static uint64_t inline _umul128(uint64_t a, uint64_t b, uint64_t *h) {
   uint64_t rhi;
   uint64_t rlo;

@@ -109,6 +109,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
                 $<$<COMPILE_LANGUAGE:C,CXX>:-mtune=native>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-fvectorize>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-fslp-vectorize>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-Ofast>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-flto=thin>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-march=armv8.2-a+crypto>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-fomit-frame-pointer>
             )
             # Use Apple's Accelerate framework for math operations
             add_compile_definitions(ACCELERATE_NEW_LAPACK)

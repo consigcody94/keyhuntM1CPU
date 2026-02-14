@@ -31,6 +31,9 @@ email: albertobsd@gmail.com
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/random.h>
+#ifdef __APPLE__
+#include <sys/qos.h>
+#endif
 #endif
 
 #ifdef __unix__
@@ -2356,6 +2359,9 @@ int searchbinary(struct address_value *buffer,char *data,int64_t array_length) {
 DWORD WINAPI thread_process_minikeys(LPVOID vargp) {
 #else
 void *thread_process_minikeys(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	FILE *keys;
 	Point publickey[4];
@@ -2528,6 +2534,9 @@ void *thread_process_minikeys(void *vargp)	{
 DWORD WINAPI thread_process(LPVOID vargp) {
 #else
 void *thread_process(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	struct tothread *tt;
 
@@ -3119,6 +3128,9 @@ void *thread_process(void *vargp)	{
 DWORD WINAPI thread_process_vanity(LPVOID vargp) {
 #else
 void *thread_process_vanity(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	struct tothread *tt;
 	Point pts[CPU_GRP_SIZE];
@@ -3874,6 +3886,9 @@ int bsgs_searchbinary(struct bsgs_xvalue *buffer,char *data,int64_t array_length
 DWORD WINAPI thread_process_bsgs(LPVOID vargp) {
 #else
 void *thread_process_bsgs(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 
 	FILE *filekey;
@@ -4057,6 +4072,11 @@ pn.y.ModAdd(&GSn[i].y);
 					pts[0] = pn;
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
+						#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 						if(r) {
@@ -4137,6 +4157,9 @@ pn.y.ModAdd(&GSn[i].y);
 DWORD WINAPI thread_process_bsgs_random(LPVOID vargp) {
 #else
 void *thread_process_bsgs_random(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 
 	FILE *filekey;
@@ -4319,6 +4342,11 @@ pn.y.ModAdd(&GSn[i].y);
 					pts[0] = pn;
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
+						#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 						if(r) {
@@ -4515,6 +4543,9 @@ void sleep_ms(int milliseconds)	{ // cross-platform sleep function
 DWORD WINAPI thread_pub2rmd(LPVOID vargp) {
 #else
 void *thread_pub2rmd(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	FILE *fd;
 	Int key_mpz;
@@ -5046,6 +5077,9 @@ void generate_binaddress_eth(Point &publickey,unsigned char *dst_address)	{
 DWORD WINAPI thread_process_bsgs_dance(LPVOID vargp) {
 #else
 void *thread_process_bsgs_dance(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 
 	FILE *filekey;
@@ -5259,6 +5293,11 @@ pn.y.ModAdd(&GSn[i].y);
 					pts[0] = pn;
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
+						#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 						if(r) {
@@ -5333,6 +5372,9 @@ pn.y.ModAdd(&GSn[i].y);
 DWORD WINAPI thread_process_bsgs_backward(LPVOID vargp) {
 #else
 void *thread_process_bsgs_backward(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	FILE *filekey;
 	struct tothread *tt;
@@ -5517,6 +5559,11 @@ pn.y.ModAdd(&GSn[i].y);
 					pts[0] = pn;
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
+						#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 						if(r) {
@@ -5591,6 +5638,9 @@ pn.y.ModAdd(&GSn[i].y);
 DWORD WINAPI thread_process_bsgs_both(LPVOID vargp) {
 #else
 void *thread_process_bsgs_both(void *vargp)	{
+#ifdef __APPLE__
+	pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
 #endif
 	FILE *filekey;
 	struct tothread *tt;
@@ -5800,6 +5850,11 @@ pn.y.ModAdd(&GSn[i].y);
 					pts[0] = pn;
 					
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
+						#ifdef __APPLE__
+						if (i + 1 < CPU_GRP_SIZE) {
+							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+						}
+#endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
 						r = bloom_check(&bloom_bP[((unsigned char)xpoint_raw[0])],xpoint_raw,32);
 						if(r) {
