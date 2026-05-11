@@ -122,7 +122,7 @@ char *raw_baseminikey = NULL;
 char *minikeyN = NULL;
 int minikey_n_limit;
 	
-const char *version = "0.2.230519 Satoshi Quest";
+const char *version = "1.0.0 M5Hunt";
 
 #define CPU_GRP_SIZE 1024
 

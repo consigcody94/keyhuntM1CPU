@@ -1,17 +1,18 @@
 cmake_minimum_required(VERSION 3.16...3.28)
 
-project(keyhunt
-    VERSION 0.3.0
-    DESCRIPTION "Bitcoin Puzzle Hunter - Optimized for Apple Silicon"
+project(m5hunt
+    VERSION 1.0.0
+    DESCRIPTION "Bitcoin Puzzle Hunter - Optimized for Apple Silicon M5"
     LANGUAGES C CXX
 )
 
 # ============================================================================
 # Apple Silicon Focused Build
 # ============================================================================
-# This project is optimized for macOS Apple Silicon (M1/M2/M3/M4)
+# This project is optimized for macOS Apple Silicon (M1/M2/M3/M4/M5)
 # The ARM64 architecture with unified memory makes it ideal for
 # secp256k1 elliptic curve computations needed for Bitcoin puzzle hunting.
+# M5 introduces three-tier cores (Super/Performance/Efficiency) and ARMv9.
 
 option(KEYHUNT_BUILD_TESTS "Build test executables" OFF)
 option(KEYHUNT_USE_OPENMP "Enable OpenMP for parallel processing" ON)
@@ -85,7 +86,7 @@ endif()
 
 # Apple Silicon specific check
 if(APPLE AND NOT KEYHUNT_ARCH_ARM64 AND KEYHUNT_APPLE_SILICON_ONLY)
-    message(WARNING "This build is optimized for Apple Silicon (M1/M2/M3/M4)")
+    message(WARNING "This build is optimized for Apple Silicon (M1/M2/M3/M4/M5)")
     message(WARNING "Running on Intel Mac may have reduced performance")
 endif()
 
@@ -95,23 +96,43 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         # Aggressive optimizations for puzzle hunting (C/C++ only, not CUDA)
         add_compile_options(
-            $<$<COMPILE_LANGUAGE:C,CXX>:-Ofast>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-O3>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-ffast-math>
             $<$<COMPILE_LANGUAGE:C,CXX>:-ftree-vectorize>
             $<$<COMPILE_LANGUAGE:C,CXX>:-ffast-math>
             $<$<COMPILE_LANGUAGE:C,CXX>:-funroll-loops>
         )
 
-        # Apple Silicon specific optimizations
+        # Apple Silicon specific optimizations (M5 > M4 > native fallback)
         if(APPLE AND KEYHUNT_ARCH_ARM64)
-            message(STATUS "Enabling Apple Silicon optimizations")
+            # Tiered CPU target: prefer M5, fall back to M4, then native
+            check_cxx_compiler_flag("-mcpu=apple-m5" COMPILER_SUPPORTS_M5)
+            check_cxx_compiler_flag("-mcpu=apple-m4" COMPILER_SUPPORTS_M4)
+
+            if(COMPILER_SUPPORTS_M5)
+                set(KEYHUNT_MCPU_FLAG "-mcpu=apple-m5")
+                set(KEYHUNT_MARCH_FLAG "-march=armv8.5-a+crypto+sha3")
+                message(STATUS "Targeting Apple M5 (ARMv9)")
+            elseif(COMPILER_SUPPORTS_M4)
+                set(KEYHUNT_MCPU_FLAG "-mcpu=apple-m4")
+                set(KEYHUNT_MARCH_FLAG "-march=armv8.5-a+crypto+sha3")
+                message(STATUS "Targeting Apple M4 (ARMv9)")
+            else()
+                set(KEYHUNT_MCPU_FLAG "-mcpu=native")
+                set(KEYHUNT_MARCH_FLAG "-march=armv8.2-a+crypto")
+                message(STATUS "Targeting native Apple Silicon (ARMv8.2)")
+            endif()
+
+            message(STATUS "Enabling Apple Silicon optimizations: ${KEYHUNT_MCPU_FLAG}")
             add_compile_options(
-                $<$<COMPILE_LANGUAGE:C,CXX>:-mcpu=apple-m1>
+                $<$<COMPILE_LANGUAGE:C,CXX>:${KEYHUNT_MCPU_FLAG}>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-mtune=native>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-fvectorize>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-fslp-vectorize>
-                $<$<COMPILE_LANGUAGE:C,CXX>:-Ofast>
+                $<$<COMPILE_LANGUAGE:C,CXX>:-O3>
+            $<$<COMPILE_LANGUAGE:C,CXX>:-ffast-math>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-flto=thin>
-                $<$<COMPILE_LANGUAGE:C,CXX>:-march=armv8.2-a+crypto>
+                $<$<COMPILE_LANGUAGE:C,CXX>:${KEYHUNT_MARCH_FLAG}>
                 $<$<COMPILE_LANGUAGE:C,CXX>:-fomit-frame-pointer>
             )
             # Use Apple's Accelerate framework for math operations
@@ -233,6 +254,15 @@ if(KEYHUNT_ARCH_X64)
         hash/ripemd160_sse.cpp
     )
     message(STATUS "Including SSE-optimized hash functions")
+endif()
+
+# NEON optimized hash functions (ARM64 - Apple Silicon)
+if(KEYHUNT_ARCH_ARM64)
+    list(APPEND HASH_SOURCES
+        hash/sha256_neon.cpp
+        hash/ripemd160_neon.cpp
+    )
+    message(STATUS "Including NEON-optimized hash functions (ARM crypto extensions)")
 endif()
 
 # GMP256K1 (GMP-based secp256k1)

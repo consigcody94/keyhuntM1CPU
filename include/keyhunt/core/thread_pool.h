@@ -21,6 +21,10 @@
 #include <optional>
 #include <chrono>
 
+#if defined(__APPLE__)
+#include "apple_qos.h"
+#endif
+
 namespace keyhunt {
 namespace core {
 
@@ -85,10 +89,12 @@ public:
     /**
      * @brief Create a thread pool
      * @param num_threads Number of worker threads (0 = auto-detect)
+     * @param qos QoS class for worker threads (Apple Silicon core affinity)
      */
-    explicit ThreadPool(size_t num_threads = 0)
+    explicit ThreadPool(size_t num_threads = 0, ThreadQoS qos = ThreadQoS::PERFORMANCE)
         : stop_(false)
-        , paused_(false) {
+        , paused_(false)
+        , qos_(qos) {
 
         if (num_threads == 0) {
             num_threads = std::thread::hardware_concurrency();
@@ -99,6 +105,9 @@ public:
 
         for (size_t i = 0; i < num_threads; ++i) {
             workers_.emplace_back([this, i] {
+#if defined(__APPLE__)
+                set_thread_qos(qos_);
+#endif
                 worker_loop(i);
             });
         }
@@ -342,6 +351,7 @@ private:
     std::atomic<bool> paused_;
     std::atomic<size_t> active_tasks_{0};
     ThreadPoolStats stats_;
+    ThreadQoS qos_ = ThreadQoS::PERFORMANCE;
 };
 
 /**

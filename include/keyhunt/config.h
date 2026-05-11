@@ -7,10 +7,11 @@
 #define KEYHUNT_CONFIG_H
 
 // Version information
-#define KEYHUNT_VERSION_MAJOR 0
-#define KEYHUNT_VERSION_MINOR 3
+#define KEYHUNT_VERSION_MAJOR 1
+#define KEYHUNT_VERSION_MINOR 0
 #define KEYHUNT_VERSION_PATCH 0
-#define KEYHUNT_VERSION_STRING "0.3.0"
+#define KEYHUNT_VERSION_STRING "1.0.0"
+#define KEYHUNT_VERSION_NAME "M5Hunt"
 
 // Platform detection
 #if defined(_WIN32) || defined(_WIN64)
@@ -62,6 +63,14 @@
     #endif
 #elif KEYHUNT_ARCH_ARM64
     #define KEYHUNT_HAS_NEON 1
+    // ARM crypto extensions (SHA-256 hardware acceleration) - available on all Apple Silicon
+    #if defined(__ARM_FEATURE_CRYPTO) || defined(__ARM_FEATURE_SHA2)
+        #define KEYHUNT_HAS_ARM_CRYPTO 1
+    #endif
+    // SHA-3 extensions (available on ARMv8.4+ / M4/M5)
+    #if defined(__ARM_FEATURE_SHA3)
+        #define KEYHUNT_HAS_ARM_SHA3 1
+    #endif
 #endif
 
 // Thread local storage

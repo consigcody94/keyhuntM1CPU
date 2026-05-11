@@ -1,7 +1,9 @@
 CC = clang
 CXX = clang++
-CFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.2-a+crypto -fomit-frame-pointer -D__APPLE__
-CXXFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.2-a+crypto -fomit-frame-pointer -D__APPLE__
+# M5-optimized flags: ARMv8.5-a with crypto+sha3 extensions
+# Falls back gracefully on M1-M4 (superset instructions simply won't be used)
+CFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.5-a+crypto+sha3 -fomit-frame-pointer -fvectorize -fslp-vectorize -D__APPLE__
+CXXFLAGS = -Ofast -target arm64-apple-macos -arch arm64 -ftree-vectorize -flto=thin -march=armv8.5-a+crypto+sha3 -fomit-frame-pointer -fvectorize -fslp-vectorize -D__APPLE__
 LDFLAGS = -lm -lpthread -lcrypto -lgmp
 RM = rm -f
 

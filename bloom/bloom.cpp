@@ -138,6 +138,11 @@ int bloom_check(struct bloom * bloom, const void * buffer, int len)
   uint8_t i;
   for (i = 0; i < bloom->hashes; i++) {
     x = (a + b*i) % bloom->bits;
+    // Prefetch next bit location to hide memory latency
+    if (i + 1 < bloom->hashes) {
+      uint64_t next_x = (a + b*(i+1)) % bloom->bits;
+      __builtin_prefetch(bloom->bf + (next_x >> 3), 0, 1);
+    }
     if (test_bit(bloom->bf, x)) {
       hits++;
     } else {

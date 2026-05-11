@@ -80,7 +80,7 @@ struct bPload	{
 
 
 	
-const char *version = "0.2.230519 Satoshi Quest";
+const char *version = "1.0.0 M5Hunt";
 const char *ip_default = "127.0.0.1";
 
 char *IP;

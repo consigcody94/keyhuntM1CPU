@@ -86,3 +86,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Claude memsearch state
+.memsearch/

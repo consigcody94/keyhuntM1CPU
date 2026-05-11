@@ -197,32 +197,38 @@ private:
 
 #if defined(__aarch64__) || defined(_M_ARM64)
 
-// ARM64 implementation using __int128 for M1/M2/M3/M4 chips
-// This maps directly to 64-bit ALUs and hardware carry flags
+// ARM64 implementation using __int128 for Apple Silicon M1/M2/M3/M4/M5
+// These map directly to 64-bit ALUs and hardware carry flags.
+// Force inline + hot to ensure zero call overhead in the BSGS inner loop.
 
+__attribute__((always_inline, hot))
 static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t *h) {
   unsigned __int128 res = (unsigned __int128)a * b;
   *h = (uint64_t)(res >> 64);
   return (uint64_t)res;
 }
 
+__attribute__((always_inline, hot))
 static inline unsigned char _addcarry_u64(unsigned char c_in, uint64_t a, uint64_t b, unsigned long long *out) {
   unsigned __int128 res = (unsigned __int128)a + b + c_in;
   *out = (uint64_t)res;
   return (unsigned char)(res >> 64);
 }
 
+__attribute__((always_inline, hot))
 static inline unsigned char _subborrow_u64(unsigned char c_in, uint64_t a, uint64_t b, unsigned long long *out) {
   unsigned __int128 res = (unsigned __int128)a - b - c_in;
   *out = (uint64_t)res;
   return (unsigned char)(res >> 127);
 }
 
+__attribute__((always_inline))
 static inline uint64_t __shiftright128(uint64_t LowPart, uint64_t HighPart, unsigned char Shift) {
   unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
   return (uint64_t)(val >> Shift);
 }
 
+__attribute__((always_inline))
 static inline uint64_t __shiftleft128(uint64_t LowPart, uint64_t HighPart, unsigned char Shift) {
   unsigned __int128 val = ((unsigned __int128)HighPart << 64) | LowPart;
   return (uint64_t)(val >> (64 - Shift));

@@ -122,7 +122,7 @@ char *raw_baseminikey = NULL;
 char *minikeyN = NULL;
 int minikey_n_limit;
 	
-const char *version = "0.2.230519 Satoshi Quest (legacy)";
+const char *version = "1.0.0 M5Hunt (legacy)";
 
 #define CPU_GRP_SIZE 1024
 //reserve
@@ -4074,7 +4074,7 @@ pn.y.ModAdd(&GSn[i].y);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
 						#ifdef __APPLE__
 						if (i + 1 < CPU_GRP_SIZE) {
-							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+							__builtin_prefetch(pts[i+1].x.num->_mp_d, 0, 3);
 						}
 #endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
@@ -4344,7 +4344,7 @@ pn.y.ModAdd(&GSn[i].y);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
 						#ifdef __APPLE__
 						if (i + 1 < CPU_GRP_SIZE) {
-							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+							__builtin_prefetch(pts[i+1].x.num->_mp_d, 0, 3);
 						}
 #endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
@@ -5295,7 +5295,7 @@ pn.y.ModAdd(&GSn[i].y);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
 						#ifdef __APPLE__
 						if (i + 1 < CPU_GRP_SIZE) {
-							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+							__builtin_prefetch(pts[i+1].x.num->_mp_d, 0, 3);
 						}
 #endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
@@ -5561,7 +5561,7 @@ pn.y.ModAdd(&GSn[i].y);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
 						#ifdef __APPLE__
 						if (i + 1 < CPU_GRP_SIZE) {
-							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+							__builtin_prefetch(pts[i+1].x.num->_mp_d, 0, 3);
 						}
 #endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
@@ -5852,7 +5852,7 @@ pn.y.ModAdd(&GSn[i].y);
 					for(int i = 0; i<CPU_GRP_SIZE && bsgs_found[k]== 0; i++) {
 						#ifdef __APPLE__
 						if (i + 1 < CPU_GRP_SIZE) {
-							__builtin_prefetch(pts[i+1].x.bits64, 0, 3);
+							__builtin_prefetch(pts[i+1].x.num->_mp_d, 0, 3);
 						}
 #endif
 						pts[i].x.Get32Bytes((unsigned char*)xpoint_raw);
